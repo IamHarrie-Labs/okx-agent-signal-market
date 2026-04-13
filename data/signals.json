@@ -1,19 +1,6 @@
 [
   {
     "id": "0",
-    "agent": "0xmockagent0000000000000000000000000000001",
-    "pair": "BTC/USDC",
-    "basisPoints": -500,
-    "windowSeconds": 600,
-    "stakeOKBWei": "10000000000000000",
-    "createdAt": 1776085246427,
-    "settlesAt": 1776085846427,
-    "priceAtCreation": "68000000000000000000000",
-    "txHash": "0xmock_publish_19d86ee21db",
-    "status": "pending"
-  },
-  {
-    "id": "0",
     "agent": "0xBF2D3eaAF0639822768f603fFa2FBc3BcEA4ef41",
     "pair": "ETH/USDC",
     "basisPoints": 200,
@@ -22,7 +9,28 @@
     "createdAt": 1776095531415,
     "settlesAt": 1776095831415,
     "priceAtCreation": "2205110000000000065536",
+    "priceAtSettlement": "2210160000000000000000",
     "txHash": "0xa9d8c5558015b9e3e0e1a4d08a4bed7e580ad686986106fd64c5ef0de2a6ee72",
-    "status": "pending"
+    "settleTxHash": "0x",
+    "status": "settled",
+    "correct": false,
+    "settledAt": 1776096000000
+  },
+  {
+    "id": "1",
+    "agent": "0xBF2D3eaAF0639822768f603fFa2FBc3BcEA4ef41",
+    "pair": "ETH/USDC",
+    "basisPoints": 200,
+    "windowSeconds": 300,
+    "stakeOKBWei": "1000000000000000",
+    "createdAt": 1776096271348,
+    "settlesAt": 1776096600871,
+    "priceAtCreation": "2207909999999999803392",
+    "txHash": "0x4a9138b2529a6b9f19f508bf16ec928a3e18b3632dde58a585bcc8622e6c8994",
+    "status": "settled",
+    "correct": false,
+    "priceAtSettlement": "2211209999999999934464",
+    "settleTxHash": "0xd3e440aaaa1b56123dd8f3263b334d11516a5a87545ea6e2529a83b0200d8018",
+    "settledAt": 1776096601872
   }
 ]
