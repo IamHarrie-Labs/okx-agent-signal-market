@@ -1,0 +1,8 @@
+.env
+node_modules/
+dist/
+*.js.map
+.DS_Store
+/tmp/
+solc_out/
+src/contracts/SignalRegistry.abi.json

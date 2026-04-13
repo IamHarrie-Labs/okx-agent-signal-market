@@ -1,0 +1,28 @@
+[
+  {
+    "id": "0",
+    "agent": "0xmockagent0000000000000000000000000000001",
+    "pair": "BTC/USDC",
+    "basisPoints": -500,
+    "windowSeconds": 600,
+    "stakeOKBWei": "10000000000000000",
+    "createdAt": 1776085246427,
+    "settlesAt": 1776085846427,
+    "priceAtCreation": "68000000000000000000000",
+    "txHash": "0xmock_publish_19d86ee21db",
+    "status": "pending"
+  },
+  {
+    "id": "0",
+    "agent": "0xBF2D3eaAF0639822768f603fFa2FBc3BcEA4ef41",
+    "pair": "ETH/USDC",
+    "basisPoints": 200,
+    "windowSeconds": 300,
+    "stakeOKBWei": "1000000000000000",
+    "createdAt": 1776095531415,
+    "settlesAt": 1776095831415,
+    "priceAtCreation": "2205110000000000065536",
+    "txHash": "0xa9d8c5558015b9e3e0e1a4d08a4bed7e580ad686986106fd64c5ef0de2a6ee72",
+    "status": "pending"
+  }
+]

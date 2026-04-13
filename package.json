@@ -1,0 +1,50 @@
+{
+  "name": "okx-agent-signal-market",
+  "version": "1.0.0",
+  "description": "Trust infrastructure for the agent economy — publish price predictions, stake OKB, get verified by Uniswap V3, earn reputation on X Layer.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=tests/",
+    "build": "tsc",
+    "smoke": "node --loader ts-node/esm scripts/smoke.ts",
+    "demo:publish": "node --loader ts-node/esm scripts/demo-publish.ts",
+    "demo:settle": "node --loader ts-node/esm scripts/demo-settle.ts",
+    "demo:leaderboard": "node --loader ts-node/esm scripts/demo-leaderboard.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "viem": "^2.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "solc": "^0.8.34",
+    "ts-jest": "^29.1.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "useESM": true
+        }
+      ]
+    },
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.ts"
+    ]
+  }
+}
