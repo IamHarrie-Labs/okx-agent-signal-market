@@ -9,7 +9,7 @@ const API_KEY = process.env.MOLTBOOK_API_KEY;
 const title = 'okx-agent-signal-market: On-Chain Reputation for the Agentic Economy [Skills Arena]';
 
 const content = [
-  '**Track:** Skills Arena | **Chain:** X Layer (chainId 196) | **Contact:** Telegram @IamHarrie',
+  '**Track:** Skills Arena | **Chain:** X Layer (chainId 196) | **Contact:** Telegram @I_amHarrie',
   '',
   '---',
   '',
@@ -85,57 +85,58 @@ const WORD_NUMS: Record<string, number> = {
   nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
   sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000,
 };
-
-// Collapse consecutive repeated chars: "thirrrty" → "thirty", "eighten" checked via dedup of both
 const dedup = (s: string) => s.replace(/(.)\1+/g, '$1');
-
-// Match obfuscated token against number words by dedup-comparing both sides
-const matchWordNum = (token: string): number | undefined => {
-  const dd = dedup(token);
-  for (const [word, val] of Object.entries(WORD_NUMS)) {
-    if (dedup(word) === dd) return val;
-  }
+function matchExact(s: string): number | undefined {
+  const dd = dedup(s);
+  for (const [w, v] of Object.entries(WORD_NUMS)) if (dedup(w) === dd) return v;
   return undefined;
-};
-
-function parseWordNumbersFromTokens(tokens: string[]): number[] {
-  const results: number[] = [];
-  let i = 0, current = 0, found = false;
+}
+function matchWithSubs(s: string): number | undefined {
+  const exact = matchExact(s);
+  if (exact !== undefined) return exact;
+  return matchExact(dedup(s).replace(/h/g, 'u')); // fohrteen→fourteen
+}
+function parseAllNumbers(tokens: string[]): number[] {
+  const r: number[] = [];
+  let i = 0, cur = 0, found = false, noise = 0;
   while (i < tokens.length) {
-    let matched = false;
-    // Try joining 3, 2, 1 tokens — prefer longer (handles 'twen'+'ty' = 'twenty', 'six'+'teen' = 'sixteen')
-    for (let w = 3; w >= 1; w--) {
+    let ok = false;
+    for (let w = 3; w >= 1 && !ok; w--) {
       if (i + w > tokens.length) continue;
-      const joined = tokens.slice(i, i + w).join('');
-      const val = matchWordNum(joined);
-      if (val !== undefined) {
-        found = true;
-        if (val === 100 || val === 1000) current = (current || 1) * val;
-        else current += val;
-        i += w;
-        matched = true;
-        break;
+      const v = matchExact(tokens.slice(i, i + w).join(''));
+      if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += w; ok = true; }
+    }
+    if (!ok && i + 1 < tokens.length) {
+      const t1 = tokens[i], t2 = tokens[i + 1];
+      for (let k = 1; k < t1.length && !ok; k++) {
+        const v = matchExact(t1.slice(-k) + t2);
+        if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += 2; ok = true; }
       }
     }
-    if (!matched) {
-      if (found) { results.push(current); current = 0; found = false; }
+    if (!ok) {
+      const v = matchWithSubs(tokens[i]);
+      if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += 1; ok = true; }
+    }
+    if (!ok) {
+      if (found) {
+        if (cur >= 20 && cur <= 90 && cur % 10 === 0 && noise < 2) { noise++; }
+        else { r.push(cur); cur = 0; found = false; noise = 0; }
+      }
       i++;
     }
   }
-  if (found) results.push(current);
-  return results;
+  if (found) r.push(cur);
+  return r;
 }
-
 function extractOperands(text: string): [number, number] {
-  // Split on "and": last number from first clause = op1, first number from second clause = op2
-  // Avoids count-words like "one claw" polluting the operands
+  const all = parseAllNumbers(text.split(/\s+/).filter(Boolean));
   const parts = text.split(/\band\b/);
   if (parts.length >= 2) {
-    const n1 = parseWordNumbersFromTokens(parts[0].split(/\s+/).filter(Boolean));
-    const n2 = parseWordNumbersFromTokens(parts.slice(1).join(' and ').split(/\s+/).filter(Boolean));
+    const n1 = parseAllNumbers(parts[0].split(/\s+/).filter(Boolean));
+    const n2 = parseAllNumbers(parts.slice(1).join(' and ').split(/\s+/).filter(Boolean));
     if (n1.length && n2.length) return [n1[n1.length - 1], n2[0]];
   }
-  const all = parseWordNumbersFromTokens(text.split(/\s+/).filter(Boolean));
+  if (all.length >= 2) { const s = [...all].sort((a, b) => b - a); return [s[0], s[1]]; }
   return [all[0] ?? 0, all[1] ?? 0];
 }
 
@@ -143,14 +144,11 @@ async function solveVerification(verification: {
   verification_code: string;
   challenge_text: string;
 }): Promise<void> {
-  // Remove special obfuscation chars WITHOUT adding spaces (preserves split words like tW/eN tY → tWeN tY)
   const clean = verification.challenge_text
     .replace(/[\]\^\/\[\-~\{\}\|\.\,\?!<>\\]/g, '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
-
-  // Try digit-based numbers first
   const digitNums = clean.match(/\d+(\.\d+)?/g)?.map(Number) ?? [];
   let answer = 0;
   if (digitNums.length >= 2) {
@@ -159,12 +157,11 @@ async function solveVerification(verification: {
     else if (clean.includes('divid')) answer = digitNums[0] / digitNums[1];
     else answer = digitNums[0] + digitNums[1];
   } else {
-    // Word numbers: split on "and" to avoid count-words polluting operands
     const [n1, n2] = extractOperands(clean);
     if (clean.includes('minus') || clean.includes('subtract')) answer = n1 - n2;
     else if (clean.includes('times') || clean.includes('multiply')) answer = n1 * n2;
     else if (clean.includes('divid')) answer = n1 / n2;
-    else answer = n1 + n2; // default: total/sum
+    else answer = n1 + n2;
   }
   console.log(`Verification challenge: "${verification.challenge_text}"`);
   console.log(`Answer: ${answer}`);

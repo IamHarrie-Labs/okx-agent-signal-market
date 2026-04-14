@@ -29,54 +29,72 @@ const WORD_NUMS: Record<string, number> = {
   nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50,
   sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000,
 };
-
-// Collapse runs of the same char: "thirrrty"→"thirty", handles obfuscated double-letters
 const dedup = (s: string) => s.replace(/(.)\1+/g, '$1');
 
-// Match an obfuscated token against known number words by comparing deduped forms
-const matchWordNum = (token: string): number | undefined => {
-  const dd = dedup(token);
-  for (const [word, val] of Object.entries(WORD_NUMS)) {
-    if (dedup(word) === dd) return val;
-  }
+// Exact dedup match
+function matchExact(s: string): number | undefined {
+  const dd = dedup(s);
+  for (const [w, v] of Object.entries(WORD_NUMS)) if (dedup(w) === dd) return v;
   return undefined;
-};
+}
+// Targeted substitution: h→u (handles fohrteen→fourteen)
+function matchWithSubs(s: string): number | undefined {
+  const exact = matchExact(s);
+  if (exact !== undefined) return exact;
+  return matchExact(dedup(s).replace(/h/g, 'u'));
+}
 
-function parseWordNumbersFromTokens(tokens: string[]): number[] {
-  const results: number[] = [];
-  let i = 0, current = 0, found = false;
+function parseAllNumbers(tokens: string[]): number[] {
+  const r: number[] = [];
+  let i = 0, cur = 0, found = false, noise = 0;
   while (i < tokens.length) {
-    let matched = false;
-    for (let w = 3; w >= 1; w--) {
+    let ok = false;
+    // 1. Full-join windows 3→1
+    for (let w = 3; w >= 1 && !ok; w--) {
       if (i + w > tokens.length) continue;
-      const joined = tokens.slice(i, i + w).join('');
-      const val = matchWordNum(joined);
-      if (val !== undefined) {
-        found = true;
-        if (val === 100 || val === 1000) current = (current || 1) * val;
-        else current += val;
-        i += w;
-        matched = true;
-        break;
+      const v = matchExact(tokens.slice(i, i + w).join(''));
+      if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += w; ok = true; }
+    }
+    // 2. Suffix-join window=2: last K chars of tokens[i] + tokens[i+1]
+    if (!ok && i + 1 < tokens.length) {
+      const t1 = tokens[i], t2 = tokens[i + 1];
+      for (let k = 1; k < t1.length && !ok; k++) {
+        const v = matchExact(t1.slice(-k) + t2);
+        if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += 2; ok = true; }
       }
     }
-    if (!matched) {
-      if (found) { results.push(current); current = 0; found = false; }
+    // 3. Single-token with h→u substitution (fohrteen→fourteen)
+    if (!ok) {
+      const v = matchWithSubs(tokens[i]);
+      if (v !== undefined) { found = true; noise = 0; if (v === 100 || v === 1000) cur = (cur || 1) * v; else cur += v; i += 1; ok = true; }
+    }
+    if (!ok) {
+      if (found) {
+        if (cur >= 20 && cur <= 90 && cur % 10 === 0 && noise < 2) { noise++; }
+        else { r.push(cur); cur = 0; found = false; noise = 0; }
+      }
       i++;
     }
   }
-  if (found) results.push(current);
-  return results;
+  if (found) r.push(cur);
+  return r;
 }
 
 function extractOperands(text: string): [number, number] {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const all = parseAllNumbers(tokens);
+  // Try "and" split — semantically correct when the two values are on either side
   const parts = text.split(/\band\b/);
   if (parts.length >= 2) {
-    const n1 = parseWordNumbersFromTokens(parts[0].split(/\s+/).filter(Boolean));
-    const n2 = parseWordNumbersFromTokens(parts.slice(1).join(' and ').split(/\s+/).filter(Boolean));
+    const n1 = parseAllNumbers(parts[0].split(/\s+/).filter(Boolean));
+    const n2 = parseAllNumbers(parts.slice(1).join(' and ').split(/\s+/).filter(Boolean));
     if (n1.length && n2.length) return [n1[n1.length - 1], n2[0]];
   }
-  const all = parseWordNumbersFromTokens(text.split(/\s+/).filter(Boolean));
+  // Fallback: top-2-largest (handles both operands in same clause separated by "while")
+  if (all.length >= 2) {
+    const sorted = [...all].sort((a, b) => b - a);
+    return [sorted[0], sorted[1]];
+  }
   return [all[0] ?? 0, all[1] ?? 0];
 }
 
